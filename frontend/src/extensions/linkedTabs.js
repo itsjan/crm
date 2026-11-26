@@ -9,11 +9,15 @@
 //       "label": "Funding Cases",       # tab name
 //       "add_label": "Add Funding Case",  # optional, text of the button
 //       "columns": ["title", "status"],
+//       # optional: in the creation dialog, the picker of the field `deal` offers only
+//       # records whose field `organization` is the page's record
+//       "add_filters": {"deal": "organization"},
 //   }]
 //
 // `get_boot` (crm/www/crm.py) passes the hook to the page as `window.linked_tabs`.
 import FileTextIcon from '@/components/Icons/FileTextIcon.vue'
 import { createDocument } from '@/composables/document'
+import { useDocument } from '@/data/document'
 import { createListResource } from 'frappe-ui'
 import { computed } from 'vue'
 
@@ -46,10 +50,19 @@ export function linkedTabs(parentDoctype, docname) {
           list,
           deskRoute: `/desk/${slug(t.doctype)}`,
           // opens the CRM's creation dialog with the page's record filled in
-          add: () =>
+          add: () => {
+            // set on every opening: the dialog of a DocType is shared by all pages
+            useDocument(t.doctype).document.fieldPropertyOverrides =
+              Object.fromEntries(
+                Object.entries(t.add_filters || {}).map(([field, key]) => [
+                  field,
+                  { link_filters: JSON.stringify({ [key]: docname }) },
+                ]),
+              )
             createDocument(t.doctype, { [t.link_field]: docname }, null, () =>
               list.reload(),
-            ),
+            )
+          },
         },
       }
     })
