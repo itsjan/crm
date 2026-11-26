@@ -13,6 +13,7 @@
 //
 // `get_boot` (crm/www/crm.py) passes the hook to the page as `window.linked_tabs`.
 import FileTextIcon from '@/components/Icons/FileTextIcon.vue'
+import { createDocument } from '@/composables/document'
 import { createListResource } from 'frappe-ui'
 import { computed } from 'vue'
 
@@ -40,7 +41,16 @@ export function linkedTabs(parentDoctype, docname) {
         label: __(t.label),
         iconLeft: FileTextIcon,
         count: computed(() => list.data?.length ?? 0),
-        linked: { ...t, list, docname, deskRoute: `/desk/${slug(t.doctype)}` },
+        linked: {
+          ...t,
+          list,
+          deskRoute: `/desk/${slug(t.doctype)}`,
+          // opens the CRM's creation dialog with the page's record filled in
+          add: () =>
+            createDocument(t.doctype, { [t.link_field]: docname }, null, () =>
+              list.reload(),
+            ),
+        },
       }
     })
 }

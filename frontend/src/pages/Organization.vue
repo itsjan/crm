@@ -49,6 +49,13 @@
           />
         </template>
       </Link>
+      <!-- fund: tabs of linked records (extensions/linkedTabs.js) -->
+      <Button
+        v-if="activeLinkedTab"
+        :label="__(activeLinkedTab.linked.add_label || 'Add')"
+        iconLeft="lucide-plus"
+        @click="activeLinkedTab.linked.add()"
+      />
     </template>
   </LayoutHeader>
   <div v-if="organization.doc" ref="parentRef" class="flex h-full">
@@ -171,6 +178,8 @@
         </Badge>
       </template>
       <template #tab-panel="{ tab }">
+        <LinkedTab v-if="tab.linked" :tab="tab" :header="false" />
+        <template v-else>
         <DealsListView
           v-if="tab.label === 'Deals' && rows.length"
           class="mt-4"
@@ -195,6 +204,7 @@
               : ''
           "
         />
+        </template>
       </template>
     </Tabs>
   </div>
@@ -231,6 +241,8 @@ import Icon from '@/components/Icon.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import DealsListView from '@/components/ListViews/DealsListView.vue'
 import ContactsListView from '@/components/ListViews/ContactsListView.vue'
+import LinkedTab from '@/extensions/LinkedTab.vue'
+import { linkedTabs } from '@/extensions/linkedTabs'
 import WebsiteIcon from '@/components/Icons/WebsiteIcon.vue'
 import CameraIcon from '@/components/Icons/CameraIcon.vue'
 import DealsIcon from '@/components/Icons/DealsIcon.vue'
@@ -442,7 +454,12 @@ const tabs = [
     iconLeft: ContactsIcon,
     count: computed(() => contacts.data?.length),
   },
+  // fund: created once here, not in a computed
+  ...linkedTabs('CRM Organization', props.organizationId),
 ]
+const activeLinkedTab = computed(() =>
+  tabs.find((tab) => tab.linked && tab.value === activeTab.value),
+)
 
 const deals = createListResource({
   type: 'list',

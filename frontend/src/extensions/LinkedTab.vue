@@ -1,6 +1,9 @@
 <template>
   <div class="flex h-full flex-col overflow-y-auto">
+    <!-- the Deal page has the name and the button in the tab; on the Organization
+         page the button is in the page header -->
     <div
+      v-if="header"
       class="mx-3 my-3 flex items-center justify-between text-lg-medium sm:mx-10 sm:mb-4 sm:mt-8"
     >
       <div class="flex h-8 items-center text-2xl-semibold text-ink-gray-8">
@@ -10,7 +13,7 @@
         variant="solid"
         :label="__(linked.add_label || 'Add')"
         iconLeft="lucide-plus"
-        @click="add"
+        @click="linked.add"
       />
     </div>
     <div
@@ -22,7 +25,7 @@
     </div>
     <ListView
       v-else-if="rows.length"
-      class="mx-3 sm:mx-10"
+      :class="header ? 'mx-3 sm:mx-10' : 'mx-3 mt-4 sm:mx-5'"
       :columns="columns"
       :rows="rows"
       row-key="name"
@@ -35,7 +38,6 @@
 <script setup>
 import EmptyState from '@/components/ListViews/EmptyState.vue'
 import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
-import { createDocument } from '@/composables/document'
 import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { formatDate } from '@/utils'
@@ -44,6 +46,7 @@ import { computed } from 'vue'
 
 const props = defineProps({
   tab: { type: Object, required: true },
+  header: { type: Boolean, default: true },
 })
 
 const linked = props.tab.linked
@@ -85,12 +88,6 @@ const rows = computed(() =>
     ),
   })),
 )
-
-function add() {
-  createDocument(linked.doctype, { [linked.link_field]: linked.docname }, null, () =>
-    linked.list.reload(),
-  )
-}
 
 // the record has no page in the CRM yet: its Desk form opens in a new browser tab
 function open(row) {
