@@ -89,6 +89,8 @@ def get_boot():
 				or get_system_timezone(),
 			},
 			"state_options": get_state_options(),
+			# fund: tabs of linked records that installed apps register (frontend/src/extensions)
+			"linked_tabs": frappe.get_hooks("crm_linked_tabs"),
 		}
 	)
 

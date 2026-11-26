@@ -46,8 +46,22 @@
       :tabs="tabs"
       class="flex flex-1 overflow-hidden flex-col [&_[role='tab']]:px-1 [&_[role='tab']]:shrink-0 [&_[role='tablist']]:px-5 [&_[role='tablist']::-webkit-scrollbar]:h-0 [&_[role='tablist']]:min-h-[45px] [&_[role='tablist']]:gap-[22px] [&>[role='tabpanel']:not([hidden])]:flex [&>[role='tabpanel']:not([hidden])]:grow [&>[data-slot=tab-list]]:overflow-x-auto [&_[data-slot=tab-indicator]]:translate-y-0 [&>[data-slot=tab-panel]]:min-h-0 [&>[data-slot=tab-panel]]:flex-col [&>[data-slot=tab-panel]]:overflow-auto"
     >
-      <template #tab-panel>
+      <!-- fund: tabs of linked records (extensions/linkedTabs.js) -->
+      <template #tab-suffix="{ tab, active }">
+        <Badge
+          v-if="tab.linked"
+          :class="[active ? 'bg-surface-gray-10' : 'bg-gray-600']"
+          variant="solid"
+          theme="gray"
+          size="sm"
+        >
+          {{ tab.count }}
+        </Badge>
+      </template>
+      <template #tab-panel="{ tab }">
+        <LinkedTab v-if="tab.linked" :tab="tab" />
         <Activities
+          v-else
           ref="activities"
           v-model:reload="reload"
           v-model:activeTab="activeTab"
@@ -361,6 +375,8 @@ import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import FileTextIcon from '@/components/Icons/FileTextIcon.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import Activities from '@/components/Activities/Activities.vue'
+import LinkedTab from '@/extensions/LinkedTab.vue'
+import { linkedTabs } from '@/extensions/linkedTabs'
 import OrganizationModal from '@/components/Modals/OrganizationModal.vue'
 import LostReasonModal from '@/components/Modals/LostReasonModal.vue'
 import AssignTo from '@/components/AssignTo.vue'
@@ -739,6 +755,9 @@ usePageMeta(() => {
   }
 })
 
+// fund: created once, not in a computed: creating a list resource inside one re-triggers it
+const dealLinkedTabs = linkedTabs('CRM Deal', props.dealId)
+
 const tabs = computed(() => {
   let tabOptions = [
     {
@@ -803,6 +822,7 @@ const tabs = computed(() => {
       iconLeft: FileTextIcon,
       condition: () => canViewQuotations.value,
     },
+    ...dealLinkedTabs,
   ]
   return tabOptions.filter((tab) => (tab.condition ? tab.condition() : true))
 })
@@ -981,10 +1001,13 @@ function deleteDeal() {
 const activities = ref(null)
 
 function openEmailBox() {
-  if (!['emails', 'comments', 'activities'].includes(activeTab.value)) {
+  // fund: while a linked tab is open, Activities is not mounted
+  if (!activities.value) {
+    changeTabTo('emails')
+  } else if (!['emails', 'comments', 'activities'].includes(activeTab.value)) {
     activities.value.changeTabTo('emails')
   }
-  nextTick(() => activities.value.emailBox?.openEmailBox())
+  nextTick(() => activities.value?.emailBox?.openEmailBox())
 }
 
 function statusLabel(status) {
