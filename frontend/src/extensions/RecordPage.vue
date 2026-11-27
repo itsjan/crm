@@ -76,11 +76,12 @@
           <Button
             variant="solid"
             :label="__('Save')"
-            :loading="document.save.loading"
+            :loading="formSave.loading"
             :disabled="!document.isDirty"
-            @click="document.save.submit()"
+            @click="formSave.submit()"
           />
         </div>
+        <p v-if="formSave.error" role="alert" class="mb-3 text-ink-red-3">{{ formSave.error.messages?.[0] || formSave.error.message }}</p>
         <FieldLayout
           v-if="formTabs.length"
           :tabs="formTabs"
@@ -154,6 +155,12 @@ const sections = createResource({
   url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_sidepanel_sections',
   cache: ['sidePanelSections', props.page.doctype],
   params: { doctype: props.page.doctype },
+})
+
+const formSave = createResource({
+  url: 'frappe.client.save',
+  makeParams: () => ({ doc: document.doc }),
+  onSuccess: () => document.reload(),
 })
 
 const formTabs = computed(() => {
