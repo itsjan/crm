@@ -411,6 +411,10 @@
                       </div>
                     </div>
                   </div>
+                  <p
+                    v-if="field.visible && recordLinks[field.fieldname]?.description"
+                    class="mx-3 mb-2 whitespace-pre-wrap break-words text-base text-ink-gray-7"
+                  >{{ recordLinks[field.fieldname].description }}</p>
                 </template>
               </FadedScrollableDiv>
             </slot>

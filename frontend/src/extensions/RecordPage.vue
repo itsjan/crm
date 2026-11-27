@@ -171,7 +171,7 @@ const recordLinks = computed(() => {
         Object.values(item.route.params).includes(name),
     )
     links[fieldname] = route
-      ? { target: { to: route }, label: parent?.label || name }
+      ? { target: { to: route }, label: parent?.label || name, description: parent?.description }
       : { target: { href: '/desk/' + field.options.toLowerCase().replace(/ /g, '-') + '/' + encodeURIComponent(name) }, label: name }
   }
   return links
@@ -222,6 +222,7 @@ async function getParentBreadcrumbs(doc, page, seen, meta) {
     items.push(...(await getParentBreadcrumbs(record, parentPage, seen, parentMeta)))
     items.push({
       label: record[parentPage.title_field] || name,
+      description: parentPage.description_field && record[parentPage.description_field]?.trim(),
       route: getRecordRoute(doctype, name),
     })
   }
