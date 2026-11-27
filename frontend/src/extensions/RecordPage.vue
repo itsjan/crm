@@ -30,6 +30,7 @@
         <SidePanelLayout
           v-if="sections.data"
           :sections="sections.data"
+          :recordLinks="recordLinks"
           :doctype="page.doctype"
           :docname="docname"
           @reload="sections.reload"
@@ -158,6 +159,23 @@ async function saveFieldChange() {
 }
 
 const parentBreadcrumbs = shallowRef([])
+const recordLinks = computed(() => {
+  const links = {}
+  for (const fieldname of props.page.read_only_links || []) {
+    const field = doctypeMeta.value?.fields.find((field) => field.fieldname === fieldname)
+    const name = document.doc?.[fieldname]
+    if (field?.fieldtype !== 'Link' || !name) continue
+    const route = getRecordRoute(field.options, name)
+    const parent = parentBreadcrumbs.value.find(
+      (item) => route && item.route.name === route.name &&
+        Object.values(item.route.params).includes(name),
+    )
+    links[fieldname] = route
+      ? { target: { to: route }, label: parent?.label || name }
+      : { target: { href: '/desk/' + field.options.toLowerCase().replace(/ /g, '-') + '/' + encodeURIComponent(name) }, label: name }
+  }
+  return links
+})
 const breadcrumbs = computed(() => [
   ...(props.page.sidebar ? [{ label: __(props.page.label), route: { name: props.page.label } }] : []),
   ...parentBreadcrumbs.value,

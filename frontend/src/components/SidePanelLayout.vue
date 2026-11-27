@@ -77,8 +77,16 @@
                       <div
                         class="grid min-h-[28px] flex-1 items-center overflow-hidden text-base"
                       >
+                        <component
+                          :is="recordLinks[field.fieldname].target.to ? 'RouterLink' : 'a'"
+                          v-if="recordLinks[field.fieldname]"
+                          v-bind="recordLinks[field.fieldname].target"
+                          class="truncate px-2 py-1 text-ink-gray-9 underline hover:text-ink-gray-7"
+                        >
+                          {{ recordLinks[field.fieldname].label }}
+                        </component>
                         <div
-                          v-if="
+                          v-else-if="
                             field.read_only &&
                             ![
                               'Int',
@@ -469,6 +477,7 @@ const props = defineProps({
   sections: { type: Object, default: () => ({}) },
   doctype: { type: String, default: 'CRM Lead' },
   docname: { type: String, required: true },
+  recordLinks: { type: Object, default: () => ({}) },
   preview: { type: Boolean, default: false },
   addContact: { type: Function, default: null },
 })
@@ -562,7 +571,7 @@ function parsedField(field) {
   const effectiveReadOnly =
     scriptReadOnly !== undefined
       ? scriptReadOnly
-      : field.read_only ||
+      : Boolean(props.recordLinks[field.fieldname]) || field.read_only ||
         (field.read_only_depends_on && read_only_via_depends_on)
 
   let _field = {
