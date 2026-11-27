@@ -177,7 +177,7 @@ def get_permlevel_access(permission_type="write", doctype=None, parent_doctype=N
 
 
 def get_field_obj(field):
-	field["placeholder"] = field.get("placeholder") or _("Add {0}...").format(_(field.label))
+	field["placeholder"] = field.get("placeholder") or "Add " + field.label + "..."
 
 	if field.fieldtype == "Link":
 		field["placeholder"] = field.get("placeholder") or "Select " + field.label + "..."

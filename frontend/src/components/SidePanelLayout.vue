@@ -154,7 +154,7 @@
                           doctype="User"
                           :filters="field.filters"
                           :placeholder="
-                            __('Select') + ' ' + field.label + '...'
+                            __('Select {0}...', [__(field.label)])
                           "
                           :hideMe="true"
                           @change="(v) => fieldChange(v, field)"
@@ -568,7 +568,10 @@ function parsedField(field) {
   let _field = {
     ...field,
     filters: parseLinkFilters(field.link_filters),
-    placeholder: field.placeholder || field.label,
+    placeholder:
+      field.placeholder === `Add ${field.label}...`
+        ? __('Add {0}...', [__(field.label)])
+        : __(field.placeholder || field.label),
     display_via_depends_on: evaluateDependsOnValue(field.depends_on, doc.value),
     mandatory_via_depends_on: evaluateDependsOnValue(
       field.mandatory_depends_on,
