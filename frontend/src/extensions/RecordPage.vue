@@ -6,21 +6,23 @@
   />
   <template v-else-if="document.doc">
     <LayoutHeader>
-      <template #left-header>
-        <Breadcrumbs :items="breadcrumbs" />
-      </template>
-      <template #right-header>
+      <header class="flex h-10.5 min-w-0 items-center justify-between gap-2 py-[7px] pl-2 sm:pl-5">
+        <div class="min-w-0 overflow-x-auto">
+          <Breadcrumbs :items="breadcrumbs" />
+        </div>
         <Button
           v-if="activeLinkedTab"
+          class="shrink-0"
           :label="__(activeLinkedTab.linked.add_label || 'Add')"
           iconLeft="lucide-plus"
           @click="activeLinkedTab.linked.add()"
         />
-      </template>
+      </header>
     </LayoutHeader>
-    <div class="flex min-h-0 flex-1">
-      <Resizer
-        class="flex h-full flex-col overflow-hidden border-r"
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+      <component
+        :is="narrow ? 'div' : Resizer"
+        class="flex shrink-0 flex-col border-b md:h-full md:overflow-hidden md:border-b-0 md:border-r"
       >
         <h1 class="truncate border-b px-5 py-4 text-xl-semibold" :title="title">
           {{ title }}
@@ -42,13 +44,13 @@
           <LoadingIndicator class="h-5 w-5" />
           {{ __('Loading...') }}
         </div>
-      </Resizer>
+      </component>
       <Tabs
         v-if="tabs.length"
         v-model="activeTab"
         as="div"
         :tabs="tabs"
-        class="flex min-w-0 flex-1 flex-col overflow-hidden [&_[role='tablist']]:min-h-[45px] [&_[role='tablist']]:px-5 [&>[data-slot=tab-panel]]:min-h-0 [&>[data-slot=tab-panel]]:grow [&>[data-slot=tab-panel]]:overflow-auto"
+        class="flex min-h-52 min-w-0 flex-1 flex-col overflow-hidden [&_[role='tablist']]:min-h-[45px] [&_[role='tablist']]:px-5 [&>[data-slot=tab-panel]]:min-h-0 [&>[data-slot=tab-panel]]:grow [&>[data-slot=tab-panel]]:overflow-auto"
       >
         <template #tab-suffix="{ tab, active }">
           <Badge
@@ -65,7 +67,7 @@
         </template>
       </Tabs>
       <EmptyState
-        v-else
+        v-else-if="!narrow"
         :name="page.label"
         :title="__('No tabs yet')"
         :description="__('The record details are in the side panel.')"
@@ -79,6 +81,7 @@
 </template>
 
 <script setup>
+import { useMediaQuery } from '@vueuse/core'
 import ErrorPage from '@/components/ErrorPage.vue'
 import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
@@ -99,6 +102,7 @@ const props = defineProps({
   docname: { type: String, required: true },
 })
 
+const narrow = useMediaQuery('(max-width: 767px)')
 const { brand } = getSettings()
 const { document } = useDocument(props.page.doctype, props.docname)
 const { doctypeMeta } = getMeta(props.page.doctype)

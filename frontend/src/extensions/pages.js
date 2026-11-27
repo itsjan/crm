@@ -52,6 +52,5 @@ export function getRegisteredNavigationItems() {
       label: page.label,
       icon: page.icon || FileTextIcon,
       route: page.label,
-      desktopOnly: true,
     }))
 }

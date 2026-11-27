@@ -114,6 +114,7 @@
             />
           </div>
         </div>
+        <LinkedTab v-if="tab.linked" :tab="tab" />
         <DealsListView
           v-if="tab.label === 'Deals' && rows.length"
           class="mt-4"
@@ -129,7 +130,7 @@
           :options="{ selectable: false, showTooltip: false }"
         />
         <div
-          v-if="!rows.length && tab.name !== 'Details'"
+          v-if="!tab.linked && !rows.length && tab.name !== 'Details'"
           class="grid flex-1 place-items-center text-2xl-medium text-ink-gray-4"
         >
           <div class="flex flex-col items-center justify-center space-y-3">
@@ -143,6 +144,8 @@
 </template>
 
 <script setup>
+import LinkedTab from '@/extensions/LinkedTab.vue'
+import { linkedTabs } from '@/extensions/linkedTabs'
 import SidePanelLayout from '@/components/SidePanelLayout.vue'
 import Icon from '@/components/Icon.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
@@ -346,6 +349,7 @@ const tabs = [
     iconLeft: h(ContactsIcon, { class: 'h-4 w-4' }),
     count: computed(() => contacts.data?.length),
   },
+  ...linkedTabs('CRM Organization', props.organizationId),
 ]
 
 const deals = createListResource({
