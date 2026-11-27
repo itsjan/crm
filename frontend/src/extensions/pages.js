@@ -50,7 +50,7 @@ export function getRegisteredNavigationItems() {
     .filter((page) => page.sidebar)
     .map((page) => ({
       label: page.label,
-      icon: FileTextIcon,
+      icon: page.icon || FileTextIcon,
       route: page.label,
       desktopOnly: true,
     }))
