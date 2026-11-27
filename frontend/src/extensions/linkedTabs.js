@@ -4,10 +4,10 @@
 //
 //   crm_linked_tabs = [{
 //       "parent_doctype": "CRM Deal",   # the page that gets the tab
-//       "doctype": "FUND Case",         # the records listed
+//       "doctype": "Project Note",         # the records listed
 //       "link_field": "deal",           # their field that names the page's record
-//       "label": "Funding Cases",       # tab name
-//       "add_label": "Add Funding Case",  # optional, text of the button
+//       "label": "Project Notes",       # tab name
+//       "add_label": "Add Project Note",  # optional, text of the button
 //       "columns": ["title", "status"],
 //       # optional: in the creation dialog, the picker of the field `deal` offers only
 //       # records whose field `organization` is the page's record
