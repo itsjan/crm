@@ -29,12 +29,12 @@
         </h1>
         <SidePanelLayout
           v-if="sections.data"
-          :sections="sections.data"
+          :sections="sideSections"
           :recordLinks="recordLinks"
           :doctype="page.doctype"
           :docname="docname"
           @reload="sections.reload"
-          @beforeFieldChange="saveFieldChange"
+          @beforeFieldChange="onSideFieldChange"
         />
         <ErrorPage
           v-else-if="sections.error"
@@ -67,6 +67,28 @@
           <LinkedTab :tab="tab" :header="false" />
         </template>
       </Tabs>
+      <section
+        v-else-if="page.form_fields?.length"
+        class="min-w-0 flex-1 overflow-auto px-4 py-5 sm:px-8"
+      >
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <h2 class="text-xl-semibold">{{ __(page.label_singular || page.label) }}</h2>
+          <Button
+            variant="solid"
+            :label="__('Save')"
+            :loading="document.save.loading"
+            :disabled="!document.isDirty"
+            @click="document.save.submit()"
+          />
+        </div>
+        <FieldLayout
+          v-if="formTabs.length"
+          :tabs="formTabs"
+          :data="document.doc"
+          :doctype="page.doctype"
+          :docname="docname"
+        />
+      </section>
       <EmptyState
         v-else-if="!narrow"
         :name="page.label"
@@ -88,6 +110,7 @@ import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import EmptyState from '@/components/ListViews/EmptyState.vue'
 import Resizer from '@/components/Resizer.vue'
+import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import SidePanelLayout from '@/components/SidePanelLayout.vue'
 import { useDocument } from '@/data/document'
 import { getMeta } from '@/stores/meta'
@@ -132,6 +155,29 @@ const sections = createResource({
   cache: ['sidePanelSections', props.page.doctype],
   params: { doctype: props.page.doctype },
 })
+
+const formTabs = computed(() => {
+  if (!doctypeMeta.value || !props.page.form_fields?.length) return []
+  const fields = props.page.form_fields
+    .map((name) => doctypeMeta.value.fields.find((field) => field.fieldname === name))
+    .filter(Boolean)
+  return [{ name: 'record', sections: [{ name: 'details', columns: [{ fields }] }] }]
+})
+
+const sideSections = computed(() => {
+  if (!props.page.form_fields?.length) return sections.data
+  return sections.data?.map((section) => ({
+    ...section,
+    columns: section.columns.map((column) => ({
+      ...column,
+      fields: column.fields.filter((field) => field.fieldname !== props.page.form_button),
+    })),
+  }))
+})
+
+function onSideFieldChange() {
+  if (!props.page.form_fields?.length) return saveFieldChange()
+}
 
 const tabs = shallowRef([])
 const activeTab = ref('')
