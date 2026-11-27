@@ -56,7 +56,7 @@ import { getRegisteredPage } from '@/extensions/pages'
 import { useDocument } from '@/data/document'
 import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
-import { createResource, ErrorMessage } from 'frappe-ui'
+import { call, createResource, ErrorMessage } from 'frappe-ui'
 import { ref, nextTick, watch, computed } from 'vue'
 
 const props = defineProps({
@@ -75,6 +75,37 @@ const error = ref(null)
 
 const { document: _data, triggerOnBeforeCreate } = useDocument(props.doctype)
 const { doctypeMeta } = getMeta(props.doctype)
+
+const page = getRegisteredPage(props.doctype)
+const titleDefault = page?.create_title
+if (titleDefault) {
+  // The document store also holds the previous, possibly cancelled, draft.
+  _data.doc = { __newDocument: true, doctype: props.doctype }
+  let suggested = ''
+  watch(
+    () => _data.doc[titleDefault.source],
+    async (source, previous, onCleanup) => {
+      let current = true
+      onCleanup(() => { current = false })
+      const title = page.title_field
+      if (_data.doc[title] && _data.doc[title] !== suggested) return
+      _data.doc[title] = ''
+      suggested = ''
+      if (!source) return
+      try {
+        const value = await call(titleDefault.method, { [titleDefault.source]: source })
+        if (current && !_data.doc[title]) {
+          suggested = value
+          _data.doc[title] = value
+        }
+      } catch (err) {
+        // The server also supplies the default when saving without a title.
+        console.warn('Could not load the default record title', err)
+      }
+    },
+    { immediate: true },
+  )
+}
 
 const dialogOptions = computed(() => {
   let doctype = props.doctype
