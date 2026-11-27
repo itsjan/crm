@@ -52,7 +52,8 @@ import EditIcon from '@/components/Icons/EditIcon.vue'
 import { usersStore } from '@/stores/users'
 import { getMeta } from '@/stores/meta'
 import { saveRecord } from '@/extensions/saveRecord'
-import { getRegisteredPage } from '@/extensions/pages'
+import { useRouter } from 'vue-router'
+import { getRecordRoute, getRegisteredPage } from '@/extensions/pages'
 import { useDocument } from '@/data/document'
 import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
@@ -64,6 +65,7 @@ const props = defineProps({
   data: { type: Object, default: () => ({}) },
 })
 
+const router = useRouter()
 const emit = defineEmits(['callback'])
 
 const { isManager } = usersStore()
@@ -169,7 +171,7 @@ async function create() {
   try {
     await triggerOnBeforeCreate?.()
     const doc = await saveRecord(
-      getRegisteredPage(props.doctype),
+      page,
       { doctype: props.doctype, ..._data.doc },
       'frappe.client.insert',
     )
@@ -177,6 +179,9 @@ async function create() {
     show.value = false
     emit('callback', doc)
     _data.doc = {}
+    if (page?.open_after_create) {
+      await router.push(getRecordRoute(props.doctype, doc.name))
+    }
   } catch (err) {
     error.value = err.messages?.[0] || err.message
   } finally {
