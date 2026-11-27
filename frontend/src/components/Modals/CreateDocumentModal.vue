@@ -51,6 +51,7 @@ import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import EditIcon from '@/components/Icons/EditIcon.vue'
 import { usersStore } from '@/stores/users'
 import { getMeta } from '@/stores/meta'
+import { getRegisteredPage } from '@/extensions/pages'
 import { useDocument } from '@/data/document'
 import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
@@ -81,7 +82,8 @@ const dialogOptions = computed(() => {
     doctype = doctype.replace(/^(CRM |FCRM )/, '')
   }
 
-  let title = __('New {0}', [doctype])
+  const page = getRegisteredPage(props.doctype)
+  const title = page?.create_label || __('New {0}', [doctype])
   let size = 'xl'
   let actions = [
     {

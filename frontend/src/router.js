@@ -3,6 +3,7 @@ import { call } from 'frappe-ui'
 import { usersStore } from '@/stores/users'
 import { sessionStore } from '@/stores/session'
 import { viewsStore } from '@/stores/views'
+import { registerRecordPages } from '@/extensions/pages'
 
 let setupChecked = false
 export const SETUP_DONE_KEY = 'crm_setup_completed'
@@ -159,6 +160,9 @@ let router = createRouter({
   history: createWebHistory('/crm'),
   routes,
 })
+
+// fund: list and record pages registered by installed apps
+registerRecordPages(router)
 
 router.beforeEach(async (to, from, next) => {
   router.previousRoute = from

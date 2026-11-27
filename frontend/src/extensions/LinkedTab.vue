@@ -18,27 +18,42 @@
     </div>
     <div
       v-if="linked.list.loading && !linked.list.data"
+      role="status"
       class="flex flex-1 flex-col items-center justify-center gap-3 text-2xl-medium text-ink-gray-4"
     >
       <LoadingIndicator class="h-6 w-6" />
       <span>{{ __('Loading...') }}</span>
     </div>
+    <ErrorPage
+      v-else-if="linked.list.error && !linked.list.data"
+      :errorTitle="__(linked.list.error.exc_type === 'PermissionError' ? 'Not Permitted' : 'Error Occurred')"
+      :errorMessage="linked.list.error.messages?.[0] || __('An Error Occurred')"
+    />
     <ListView
       v-else-if="rows.length"
       :class="header ? 'mx-3 sm:mx-10' : 'mx-3 mt-4 sm:mx-5'"
       :columns="columns"
       :rows="rows"
       row-key="name"
-      :options="{ selectable: false, showTooltip: false, onRowClick: open }"
+      :options="listOptions"
     />
-    <EmptyState v-else :name="tab.name" :icon="tab.iconLeft" top="30%" />
+    <EmptyState
+      v-else
+      :name="tab.name"
+      :icon="tab.iconLeft"
+      :title="linked.empty_title ? __(linked.empty_title) : ''"
+      :description="linked.empty_description ? __(linked.empty_description) : ''"
+      top="30%"
+    />
   </div>
 </template>
 
 <script setup>
+import ErrorPage from '@/components/ErrorPage.vue'
 import EmptyState from '@/components/ListViews/EmptyState.vue'
 import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
 import { getMeta } from '@/stores/meta'
+import { getRecordRoute, getRegisteredPage } from './pages'
 import { usersStore } from '@/stores/users'
 import { formatDate } from '@/utils'
 import { ListView } from 'frappe-ui/experimental'
@@ -89,8 +104,15 @@ const rows = computed(() =>
   })),
 )
 
-// the record has no page in the CRM yet: its Desk form opens in a new browser tab
-function open(row) {
-  window.open(`${linked.deskRoute}/${encodeURIComponent(row.name)}`, '_blank')
+const listOptions = {
+  selectable: false,
+  showTooltip: false,
+  ...(getRegisteredPage(linked.doctype)
+    ? { getRowRoute: (row) => getRecordRoute(linked.doctype, row.name) }
+    : { onRowClick: openDesk }),
+}
+
+function openDesk(row) {
+  window.open(`${linked.deskRoute}/${encodeURIComponent(row.name)}`, '_blank', 'noopener')
 }
 </script>

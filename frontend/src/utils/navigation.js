@@ -7,6 +7,7 @@ import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import LucideLayoutDashboard from '~icons/lucide/layout-dashboard'
 import router from '@/router'
+import { getRegisteredNavigationItems } from '@/extensions/pages'
 
 export const navigationItems = [
   {
@@ -25,7 +26,7 @@ export const navigationItems = [
 ]
 
 export function getNavigationItems({ mobile = false } = {}) {
-  return navigationItems.filter(
+  return [...navigationItems, ...getRegisteredNavigationItems()].filter(
     (item) => router.hasRoute(item.route) && (!mobile || !item.desktopOnly),
   )
 }
