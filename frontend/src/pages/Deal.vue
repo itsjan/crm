@@ -1000,15 +1000,29 @@ function deleteDeal() {
 
 const activities = ref(null)
 
+// The linked panel has no composer. Opening it can require mounting Activities
+// and then its CommunicationArea on the destination tab.
+const emailRequested = ref(false)
 function openEmailBox() {
-  // fund: while a linked tab is open, Activities is not mounted
-  if (!activities.value) {
+  if (!['emails', 'comments', 'activity'].includes(activeTab.value)) {
     changeTabTo('emails')
-  } else if (!['emails', 'comments', 'activities'].includes(activeTab.value)) {
-    activities.value.changeTabTo('emails')
   }
-  nextTick(() => activities.value?.emailBox?.openEmailBox())
+  emailRequested.value = true
 }
+
+watch(
+  [emailRequested, activeTab, () => activities.value?.emailBox],
+  ([requested, tab, composer]) => {
+    if (!requested) return
+    if (!['emails', 'comments', 'activity'].includes(tab)) {
+      emailRequested.value = false
+    } else if (composer) {
+      emailRequested.value = false
+      composer.openEmailBox()
+    }
+  },
+  { flush: 'post' },
+)
 
 function statusLabel(status) {
   if (isTranslatable('CRM Deal Status')) return __(status)

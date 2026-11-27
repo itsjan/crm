@@ -165,6 +165,9 @@ let router = createRouter({
 registerRecordPages(router)
 
 router.beforeEach(async (to, from, next) => {
+  // Deal tabs share the page and its composer. A different Deal still remounts.
+  if (to.name === 'Deal') to.meta.viewKey = to.fullPath.split('#')[0]
+
   router.previousRoute = from
 
   const { isLoggedIn, user } = sessionStore()
