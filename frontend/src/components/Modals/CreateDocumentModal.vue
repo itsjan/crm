@@ -51,11 +51,12 @@ import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import EditIcon from '@/components/Icons/EditIcon.vue'
 import { usersStore } from '@/stores/users'
 import { getMeta } from '@/stores/meta'
+import { saveRecord } from '@/extensions/saveRecord'
 import { getRegisteredPage } from '@/extensions/pages'
 import { useDocument } from '@/data/document'
 import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
-import { createResource, ErrorMessage, call } from 'frappe-ui'
+import { createResource, ErrorMessage } from 'frappe-ui'
 import { ref, nextTick, watch, computed } from 'vue'
 
 const props = defineProps({
@@ -134,30 +135,22 @@ async function create() {
   loading.value = true
   error.value = null
 
-  await triggerOnBeforeCreate?.()
-
-  let doc = await call(
-    'frappe.client.insert',
-    {
-      doc: {
-        doctype: props.doctype,
-        ..._data.doc,
-      },
-    },
-    {
-      onError: (err) => {
-        loading.value = false
-        if (err.error) {
-          error.value = err.error.messages?.[0]
-        }
-      },
-    },
-  )
-
-  loading.value = false
-  show.value = false
-  emit('callback', doc)
-  _data.doc = {}
+  try {
+    await triggerOnBeforeCreate?.()
+    const doc = await saveRecord(
+      getRegisteredPage(props.doctype),
+      { doctype: props.doctype, ..._data.doc },
+      'frappe.client.insert',
+    )
+    if (!doc) return
+    show.value = false
+    emit('callback', doc)
+    _data.doc = {}
+  } catch (err) {
+    error.value = err.messages?.[0] || err.message
+  } finally {
+    loading.value = false
+  }
 }
 
 watch(

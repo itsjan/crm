@@ -118,6 +118,7 @@ import { getMeta } from '@/stores/meta'
 import { getSettings } from '@/stores/settings'
 import { call, createResource, Breadcrumbs, Tabs, usePageMeta } from 'frappe-ui'
 import { computed, ref, shallowRef, unref, watch } from 'vue'
+import { saveRecord } from './saveRecord'
 import LinkedTab from './LinkedTab.vue'
 import { linkedTabs } from './linkedTabs'
 import { getParentPage, getRecordRoute } from './pages'
@@ -159,8 +160,8 @@ const sections = createResource({
 
 const formSave = createResource({
   url: 'frappe.client.save',
-  makeParams: () => ({ doc: document.doc }),
-  onSuccess: () => document.reload(),
+  resourceFetcher: ({ url }) => saveRecord(props.page, document.doc, url),
+  onSuccess: (saved) => saved && document.reload(),
 })
 
 const formTabs = computed(() => {
