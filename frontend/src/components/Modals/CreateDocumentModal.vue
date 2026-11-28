@@ -51,11 +51,13 @@ import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import EditIcon from '@/components/Icons/EditIcon.vue'
 import { usersStore } from '@/stores/users'
 import { getMeta } from '@/stores/meta'
-import { getRegisteredPage } from '@/extensions/pages'
+import { saveRecord } from '@/extensions/saveRecord'
+import { useRouter } from 'vue-router'
+import { getRecordRoute, getRegisteredPage } from '@/extensions/pages'
 import { useDocument } from '@/data/document'
 import { isMobileView } from '@/composables/settings'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
-import { createResource, ErrorMessage, call } from 'frappe-ui'
+import { call, createResource, ErrorMessage } from 'frappe-ui'
 import { ref, nextTick, watch, computed } from 'vue'
 
 const props = defineProps({
@@ -63,6 +65,7 @@ const props = defineProps({
   data: { type: Object, default: () => ({}) },
 })
 
+const router = useRouter()
 const emit = defineEmits(['callback'])
 
 const { isManager } = usersStore()
@@ -74,6 +77,37 @@ const error = ref(null)
 
 const { document: _data, triggerOnBeforeCreate } = useDocument(props.doctype)
 const { doctypeMeta } = getMeta(props.doctype)
+
+const page = getRegisteredPage(props.doctype)
+const titleDefault = page?.create_title
+if (titleDefault) {
+  // The document store also holds the previous, possibly cancelled, draft.
+  _data.doc = { __newDocument: true, doctype: props.doctype }
+  let suggested = ''
+  watch(
+    () => _data.doc[titleDefault.source],
+    async (source, previous, onCleanup) => {
+      let current = true
+      onCleanup(() => { current = false })
+      const title = page.title_field
+      if (_data.doc[title] && _data.doc[title] !== suggested) return
+      _data.doc[title] = ''
+      suggested = ''
+      if (!source) return
+      try {
+        const value = await call(titleDefault.method, { [titleDefault.source]: source })
+        if (current && !_data.doc[title]) {
+          suggested = value
+          _data.doc[title] = value
+        }
+      } catch (err) {
+        // The server also supplies the default when saving without a title.
+        console.warn('Could not load the default record title', err)
+      }
+    },
+    { immediate: true },
+  )
+}
 
 const dialogOptions = computed(() => {
   let doctype = props.doctype
@@ -134,30 +168,25 @@ async function create() {
   loading.value = true
   error.value = null
 
-  await triggerOnBeforeCreate?.()
-
-  let doc = await call(
-    'frappe.client.insert',
-    {
-      doc: {
-        doctype: props.doctype,
-        ..._data.doc,
-      },
-    },
-    {
-      onError: (err) => {
-        loading.value = false
-        if (err.error) {
-          error.value = err.error.messages?.[0]
-        }
-      },
-    },
-  )
-
-  loading.value = false
-  show.value = false
-  emit('callback', doc)
-  _data.doc = {}
+  try {
+    await triggerOnBeforeCreate?.()
+    const doc = await saveRecord(
+      page,
+      { doctype: props.doctype, ..._data.doc },
+      'frappe.client.insert',
+    )
+    if (!doc) return
+    show.value = false
+    emit('callback', doc)
+    _data.doc = {}
+    if (page?.open_after_create) {
+      await router.push(getRecordRoute(props.doctype, doc.name))
+    }
+  } catch (err) {
+    error.value = err.messages?.[0] || err.message
+  } finally {
+    loading.value = false
+  }
 }
 
 watch(

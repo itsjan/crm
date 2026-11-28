@@ -242,6 +242,7 @@ import LayoutHeader from '@/components/LayoutHeader.vue'
 import DealsListView from '@/components/ListViews/DealsListView.vue'
 import ContactsListView from '@/components/ListViews/ContactsListView.vue'
 import LinkedTab from '@/extensions/LinkedTab.vue'
+import { useRecordTab } from '@/extensions/useRecordTab'
 import { linkedTabs } from '@/extensions/linkedTabs'
 import WebsiteIcon from '@/components/Icons/WebsiteIcon.vue'
 import CameraIcon from '@/components/Icons/CameraIcon.vue'
@@ -440,7 +441,6 @@ function getParsedSections(_sections) {
   })
 }
 
-const activeTab = ref('deals')
 const tabs = [
   {
     value: 'deals',
@@ -457,6 +457,7 @@ const tabs = [
   // fund: created once here, not in a computed
   ...linkedTabs('CRM Organization', props.organizationId),
 ]
+const activeTab = useRecordTab('CRM Organization', props.organizationId, tabs)
 const activeLinkedTab = computed(() =>
   tabs.find((tab) => tab.linked && tab.value === activeTab.value),
 )

@@ -11,6 +11,13 @@
           <Breadcrumbs :items="breadcrumbs" />
         </div>
         <Button
+          v-if="page.show_delete && permissions.data?.permissions?.delete"
+          theme="red"
+          icon-left="lucide-trash-2"
+          :label="__('Delete')"
+          @click="showDelete = true"
+        />
+        <Button
           v-if="activeLinkedTab"
           class="shrink-0"
           :label="__(activeLinkedTab.linked.add_label || 'Add')"
@@ -29,12 +36,12 @@
         </h1>
         <SidePanelLayout
           v-if="sections.data"
-          :sections="sections.data"
+          :sections="sideSections"
           :recordLinks="recordLinks"
           :doctype="page.doctype"
           :docname="docname"
           @reload="sections.reload"
-          @beforeFieldChange="saveFieldChange"
+          @beforeFieldChange="onSideFieldChange"
         />
         <ErrorPage
           v-else-if="sections.error"
@@ -67,6 +74,29 @@
           <LinkedTab :tab="tab" :header="false" />
         </template>
       </Tabs>
+      <section
+        v-else-if="page.form_fields?.length"
+        class="min-w-0 flex-1 overflow-auto px-4 py-5 sm:px-8"
+      >
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <h2 class="text-xl-semibold">{{ __(page.label_singular || page.label) }}</h2>
+          <Button
+            variant="solid"
+            :label="__('Save')"
+            :loading="formSave.loading"
+            :disabled="!document.isDirty"
+            @click="formSave.submit()"
+          />
+        </div>
+        <p v-if="formSave.error" role="alert" class="mb-3 text-ink-red-3">{{ formSave.error.messages?.[0] || formSave.error.message }}</p>
+        <FieldLayout
+          v-if="formTabs.length"
+          :tabs="formTabs"
+          :data="document.doc"
+          :doctype="page.doctype"
+          :docname="docname"
+        />
+      </section>
       <EmptyState
         v-else-if="!narrow"
         :name="page.label"
@@ -74,6 +104,14 @@
         :description="__('The record details are in the side panel.')"
       />
     </div>
+    <Dialog v-model:open="showDelete" :title="__('Delete')">
+      <p>{{ __('Are you sure you want to delete {0}?', [title]) }}</p>
+      <p v-if="deleteError" role="alert" class="mt-2 text-ink-red-3">{{ deleteError }}</p>
+      <template #actions>
+        <Button :label="__('Cancel')" :disabled="deleting" @click="showDelete = false" />
+        <Button theme="red" variant="solid" :label="__('Delete')" :loading="deleting" @click="deleteRecord" />
+      </template>
+    </Dialog>
   </template>
   <div v-else class="flex flex-1 items-center justify-center gap-3" role="status">
     <LoadingIndicator class="h-6 w-6" />
@@ -88,13 +126,17 @@ import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import EmptyState from '@/components/ListViews/EmptyState.vue'
 import Resizer from '@/components/Resizer.vue'
+import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import SidePanelLayout from '@/components/SidePanelLayout.vue'
-import { useDocument } from '@/data/document'
+import { useRouter } from 'vue-router'
+import { useDocument, markDocumentAsDeleted, unmarkDocumentAsDeleted, expireDeletionMarker } from '@/data/document'
 import { getMeta } from '@/stores/meta'
 import { getSettings } from '@/stores/settings'
-import { call, createResource, Breadcrumbs, Tabs, usePageMeta } from 'frappe-ui'
+import { call, createResource, Dialog, Breadcrumbs, Tabs, usePageMeta } from 'frappe-ui'
 import { computed, ref, shallowRef, unref, watch } from 'vue'
+import { saveRecord } from './saveRecord'
 import LinkedTab from './LinkedTab.vue'
+import { useRecordTab } from '@/extensions/useRecordTab'
 import { linkedTabs } from './linkedTabs'
 import { getParentPage, getRecordRoute } from './pages'
 
@@ -105,9 +147,36 @@ const props = defineProps({
 
 const narrow = useMediaQuery('(max-width: 767px)')
 const { brand } = getSettings()
-const { document } = useDocument(props.page.doctype, props.docname)
+const { document, permissions } = useDocument(props.page.doctype, props.docname)
 const { doctypeMeta } = getMeta(props.page.doctype)
 const title = computed(() => document.doc?.[props.page.title_field] || props.docname)
+
+const router = useRouter()
+const showDelete = ref(false)
+const deleting = ref(false)
+const deleteError = ref('')
+watch(showDelete, () => { deleteError.value = '' })
+
+async function deleteRecord() {
+  if (deleting.value) return
+  const { doctype, label } = props.page
+  const name = props.docname
+  const destination = parentBreadcrumbs.value.at(-1)?.route || { name: label }
+  deleting.value = true
+  markDocumentAsDeleted(doctype, name)
+  try {
+    await call('frappe.client.delete', { doctype, name })
+  } catch (err) {
+    unmarkDocumentAsDeleted(doctype, name)
+    deleteError.value = err.messages?.[0] || err.message
+    return
+  } finally {
+    deleting.value = false
+  }
+  expireDeletionMarker(doctype, name)
+  showDelete.value = false
+  await router.replace(destination)
+}
 
 const loadError = computed(() => document.get.error)
 const errorTitle = computed(() => {
@@ -133,8 +202,37 @@ const sections = createResource({
   params: { doctype: props.page.doctype },
 })
 
+const formSave = createResource({
+  url: 'frappe.client.save',
+  resourceFetcher: ({ url }) => saveRecord(props.page, document.doc, url),
+  onSuccess: (saved) => saved && document.reload(),
+})
+
+const formTabs = computed(() => {
+  if (!doctypeMeta.value || !props.page.form_fields?.length) return []
+  const fields = props.page.form_fields
+    .map((name) => doctypeMeta.value.fields.find((field) => field.fieldname === name))
+    .filter(Boolean)
+  return [{ name: 'record', sections: [{ name: 'details', columns: [{ fields }] }] }]
+})
+
+const sideSections = computed(() => {
+  if (!props.page.form_fields?.length) return sections.data
+  return sections.data?.map((section) => ({
+    ...section,
+    columns: section.columns.map((column) => ({
+      ...column,
+      fields: column.fields.filter((field) => field.fieldname !== props.page.form_button),
+    })),
+  }))
+})
+
+function onSideFieldChange() {
+  if (!props.page.form_fields?.length) return saveFieldChange()
+}
+
 const tabs = shallowRef([])
-const activeTab = ref('')
+const activeTab = useRecordTab(props.page.doctype, props.docname, tabs)
 const activeLinkedTab = computed(() => tabs.value.find((tab) => tab.value === activeTab.value))
 
 watch(
@@ -143,7 +241,6 @@ watch(
     if (!name) return
     sections.fetch()
     tabs.value = linkedTabs(props.page.doctype, name)
-    activeTab.value = tabs.value[0]?.value || ''
   },
   { immediate: true },
 )
