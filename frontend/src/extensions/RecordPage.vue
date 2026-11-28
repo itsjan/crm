@@ -11,6 +11,13 @@
           <Breadcrumbs :items="breadcrumbs" />
         </div>
         <Button
+          v-if="page.show_delete && permissions.data?.permissions?.delete"
+          theme="red"
+          icon-left="lucide-trash-2"
+          :label="__('Delete')"
+          @click="showDelete = true"
+        />
+        <Button
           v-if="activeLinkedTab"
           class="shrink-0"
           :label="__(activeLinkedTab.linked.add_label || 'Add')"
@@ -97,6 +104,14 @@
         :description="__('The record details are in the side panel.')"
       />
     </div>
+    <Dialog v-model:open="showDelete" :title="__('Delete')">
+      <p>{{ __('Are you sure you want to delete {0}?', [title]) }}</p>
+      <p v-if="deleteError" role="alert" class="mt-2 text-ink-red-3">{{ deleteError }}</p>
+      <template #actions>
+        <Button :label="__('Cancel')" :disabled="deleting" @click="showDelete = false" />
+        <Button theme="red" variant="solid" :label="__('Delete')" :loading="deleting" @click="deleteRecord" />
+      </template>
+    </Dialog>
   </template>
   <div v-else class="flex flex-1 items-center justify-center gap-3" role="status">
     <LoadingIndicator class="h-6 w-6" />
@@ -113,10 +128,11 @@ import EmptyState from '@/components/ListViews/EmptyState.vue'
 import Resizer from '@/components/Resizer.vue'
 import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import SidePanelLayout from '@/components/SidePanelLayout.vue'
-import { useDocument } from '@/data/document'
+import { useRouter } from 'vue-router'
+import { useDocument, markDocumentAsDeleted, unmarkDocumentAsDeleted, expireDeletionMarker } from '@/data/document'
 import { getMeta } from '@/stores/meta'
 import { getSettings } from '@/stores/settings'
-import { call, createResource, Breadcrumbs, Tabs, usePageMeta } from 'frappe-ui'
+import { call, createResource, Dialog, Breadcrumbs, Tabs, usePageMeta } from 'frappe-ui'
 import { computed, ref, shallowRef, unref, watch } from 'vue'
 import { saveRecord } from './saveRecord'
 import LinkedTab from './LinkedTab.vue'
@@ -130,9 +146,36 @@ const props = defineProps({
 
 const narrow = useMediaQuery('(max-width: 767px)')
 const { brand } = getSettings()
-const { document } = useDocument(props.page.doctype, props.docname)
+const { document, permissions } = useDocument(props.page.doctype, props.docname)
 const { doctypeMeta } = getMeta(props.page.doctype)
 const title = computed(() => document.doc?.[props.page.title_field] || props.docname)
+
+const router = useRouter()
+const showDelete = ref(false)
+const deleting = ref(false)
+const deleteError = ref('')
+watch(showDelete, () => { deleteError.value = '' })
+
+async function deleteRecord() {
+  if (deleting.value) return
+  const { doctype, label } = props.page
+  const name = props.docname
+  const destination = parentBreadcrumbs.value.at(-1)?.route || { name: label }
+  deleting.value = true
+  markDocumentAsDeleted(doctype, name)
+  try {
+    await call('frappe.client.delete', { doctype, name })
+  } catch (err) {
+    unmarkDocumentAsDeleted(doctype, name)
+    deleteError.value = err.messages?.[0] || err.message
+    return
+  } finally {
+    deleting.value = false
+  }
+  expireDeletionMarker(doctype, name)
+  showDelete.value = false
+  await router.replace(destination)
+}
 
 const loadError = computed(() => document.get.error)
 const errorTitle = computed(() => {
