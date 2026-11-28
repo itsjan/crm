@@ -136,6 +136,7 @@ import { call, createResource, Dialog, Breadcrumbs, Tabs, usePageMeta } from 'fr
 import { computed, ref, shallowRef, unref, watch } from 'vue'
 import { saveRecord } from './saveRecord'
 import LinkedTab from './LinkedTab.vue'
+import { useRecordTab } from '@/extensions/useRecordTab'
 import { linkedTabs } from './linkedTabs'
 import { getParentPage, getRecordRoute } from './pages'
 
@@ -231,7 +232,7 @@ function onSideFieldChange() {
 }
 
 const tabs = shallowRef([])
-const activeTab = ref('')
+const activeTab = useRecordTab(props.page.doctype, props.docname, tabs)
 const activeLinkedTab = computed(() => tabs.value.find((tab) => tab.value === activeTab.value))
 
 watch(
@@ -240,7 +241,6 @@ watch(
     if (!name) return
     sections.fetch()
     tabs.value = linkedTabs(props.page.doctype, name)
-    activeTab.value = tabs.value[0]?.value || ''
   },
   { immediate: true },
 )
